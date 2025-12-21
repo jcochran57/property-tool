@@ -1,46 +1,55 @@
-// app.js – Cochran Claims Property Tool (2D Base w/ Wall Dimensions)
+// app.js – Cochran Claims Property Tool (2D with Wall Dimensions)
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("Cochran Property Tool loaded");
 
   /* =========================
-     Canvas Setup
+     CANVAS CONTAINER
   ========================= */
+  const container = document.getElementById("canvasContainer");
+  if (!container) {
+    alert("canvasContainer not found in index.html");
+    return;
+  }
+
+  container.style.position = "relative";
+  container.style.flex = "1";
+  container.style.overflow = "visible";
+
   const canvas = document.createElement("canvas");
   canvas.id = "floorCanvas";
   canvas.style.border = "1px solid #999";
-  canvas.width = window.innerWidth - 320;
-  canvas.height = window.innerHeight - 120;
-  const container = document.getElementById("canvasContainer");
-container.appendChild(canvas);
+  canvas.width = container.clientWidth || 1200;
+  canvas.height = window.innerHeight - 140;
 
+  container.appendChild(canvas);
 
   const ctx = canvas.getContext("2d");
 
   window.addEventListener("resize", () => {
-    canvas.width = window.innerWidth - 320;
-    canvas.height = window.innerHeight - 120;
+    canvas.width = container.clientWidth || 1200;
+    canvas.height = window.innerHeight - 140;
     draw();
   });
 
   /* =========================
-     Data Model
+     DATA MODEL
   ========================= */
+  const PX_PER_FT = 25;
+
   let rooms = [];
   let selectedRoomId = null;
   let roomCounter = 1;
 
-  const PX_PER_FT = 25; // scale
-
   /* =========================
-     UI Elements
+     UI ELEMENTS
   ========================= */
   const addRoomBtn = document.getElementById("addRoomBtn");
   const undoBtn = document.getElementById("undoBtn");
   const roomList = document.getElementById("roomList");
 
   if (!addRoomBtn || !undoBtn || !roomList) {
-    console.error("Required UI elements not found");
+    alert("Required buttons not found in index.html");
     return;
   }
 
@@ -48,14 +57,14 @@ container.appendChild(canvas);
   undoBtn.addEventListener("click", undoLast);
 
   /* =========================
-     Room Functions
+     ROOM CREATION
   ========================= */
   function addRoom() {
     const room = {
       id: crypto.randomUUID(),
       name: `Room ${roomCounter++}`,
-      x: 120 + rooms.length * 30,
-      y: 120 + rooms.length * 30,
+      x: 150 + rooms.length * 30,
+      y: 150 + rooms.length * 30,
       walls: {
         top: 12,
         right: 10,
@@ -82,7 +91,7 @@ container.appendChild(canvas);
   }
 
   /* =========================
-     Room List UI
+     ROOM LIST
   ========================= */
   function updateRoomList() {
     roomList.innerHTML = "";
@@ -110,39 +119,49 @@ container.appendChild(canvas);
   }
 
   /* =========================
-     Drawing
+     DRAWING
   ========================= */
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     rooms.forEach(room => {
-      const isSelected = room.id === selectedRoomId;
+      const selected = room.id === selectedRoomId;
 
+      // Room outline
       ctx.lineWidth = 4;
-      ctx.strokeStyle = isSelected ? "#1976D2" : "#444";
+      ctx.strokeStyle = selected ? "#1976D2" : "#444";
       ctx.strokeRect(room.x, room.y, room.w, room.h);
 
-      // Room name
+      // Room label
       ctx.font = "14px Arial";
       ctx.fillStyle = "#000";
-      ctx.fillText(room.name, room.x + 8, room.y - 10);
+      ctx.fillText(room.name, room.x + 8, room.y - 8);
 
-      // Wall dimensions (2D only)
-      ctx.font = "12px Arial";
-      ctx.fillStyle = "#333";
+      // WALL DIMENSIONS (HIGH VISIBILITY)
+      ctx.font = "bold 16px Arial";
+      ctx.fillStyle = "red";
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 3;
 
       const cx = room.x + room.w / 2;
       const cy = room.y + room.h / 2;
 
-      ctx.fillText(`${room.walls.top} ft`, cx - 18, room.y - 4);
-      ctx.fillText(`${room.walls.right} ft`, room.x + room.w + 6, cy);
-      ctx.fillText(`${room.walls.bottom} ft`, cx - 18, room.y + room.h + 14);
-      ctx.fillText(`${room.walls.left} ft`, room.x - 40, cy);
+      ctx.strokeText(`${room.walls.top} ft`, cx - 30, room.y - 12);
+      ctx.fillText(`${room.walls.top} ft`, cx - 30, room.y - 12);
+
+      ctx.strokeText(`${room.walls.right} ft`, room.x + room.w + 12, cy);
+      ctx.fillText(`${room.walls.right} ft`, room.x + room.w + 12, cy);
+
+      ctx.strokeText(`${room.walls.bottom} ft`, cx - 30, room.y + room.h + 26);
+      ctx.fillText(`${room.walls.bottom} ft`, cx - 30, room.y + room.h + 26);
+
+      ctx.strokeText(`${room.walls.left} ft`, room.x - 65, cy);
+      ctx.fillText(`${room.walls.left} ft`, room.x - 65, cy);
     });
   }
 
   /* =========================
-     Dragging (Mouse + iPad)
+     DRAGGING (MOUSE + iPAD)
   ========================= */
   let dragging = false;
   let dragOffsetX = 0;
@@ -185,7 +204,7 @@ container.appendChild(canvas);
   canvas.addEventListener("pointerleave", () => dragging = false);
 
   /* =========================
-     Edit Wall Dimensions (Double-Click)
+     EDIT WALL DIMENSIONS
   ========================= */
   canvas.addEventListener("dblclick", e => {
     const mx = e.clientX;
@@ -200,7 +219,7 @@ container.appendChild(canvas);
 
     if (!room) return;
 
-    const edge = 10;
+    const edge = 12;
     let side = null;
 
     if (Math.abs(my - room.y) < edge) side = "top";
@@ -211,21 +230,20 @@ container.appendChild(canvas);
     if (!side) return;
 
     const current = room.walls[side];
-    const input = prompt(`Enter ${side} wall length (ft):`, current);
-    if (!input) return;
+    const val = prompt(`Enter ${side} wall length (ft):`, current);
+    if (!val) return;
 
-    const val = parseFloat(input);
-    if (isNaN(val) || val <= 0) return;
+    const num = parseFloat(val);
+    if (isNaN(num) || num <= 0) return;
 
-    room.walls[side] = val;
+    room.walls[side] = num;
 
-    // Resize geometry
     if (side === "top" || side === "bottom") {
-      room.w = val * PX_PER_FT;
-      room.walls.top = room.walls.bottom = val;
+      room.walls.top = room.walls.bottom = num;
+      room.w = num * PX_PER_FT;
     } else {
-      room.h = val * PX_PER_FT;
-      room.walls.left = room.walls.right = val;
+      room.walls.left = room.walls.right = num;
+      room.h = num * PX_PER_FT;
     }
 
     draw();
