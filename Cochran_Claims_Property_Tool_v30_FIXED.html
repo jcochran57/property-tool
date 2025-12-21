@@ -3263,6 +3263,75 @@ function confirmCutWall() {
             
             if (state.draggingRoom !== null) {
                 state.draggingRoom = null;
+                canvas2D.style.cursor = 'default';
+            }
+        });
+
+        // Touch panning support for iPad/mobile (two-finger pan)
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartPanX = 0;
+        let touchStartPanY = 0;
+        let isTouchPanning = false;
+
+        canvas2D.addEventListener('touchstart', (e) => {
+            if (state.currentView !== '2d') return;
+            
+            if (e.touches.length === 2) {
+                // Two-finger touch - start panning
+                e.preventDefault();
+                
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                
+                // Calculate center point
+                touchStartX = (touch1.clientX + touch2.clientX) / 2;
+                touchStartY = (touch1.clientY + touch2.clientY) / 2;
+                touchStartPanX = state.panX;
+                touchStartPanY = state.panY;
+                isTouchPanning = true;
+            }
+        });
+
+        canvas2D.addEventListener('touchmove', (e) => {
+            if (state.currentView !== '2d') return;
+            
+            if (e.touches.length === 2 && isTouchPanning) {
+                e.preventDefault();
+                
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                
+                // Calculate current center
+                const currentX = (touch1.clientX + touch2.clientX) / 2;
+                const currentY = (touch1.clientY + touch2.clientY) / 2;
+                
+                // Calculate movement
+                const dx = currentX - touchStartX;
+                const dy = currentY - touchStartY;
+                
+                // Update pan position
+                state.panX = touchStartPanX + dx;
+                state.panY = touchStartPanY + dy;
+                
+                redraw2D();
+            }
+        });
+
+        canvas2D.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                isTouchPanning = false;
+            }
+        });
+
+        canvas2D.addEventListener('touchcancel', () => {
+            isTouchPanning = false;
+        });
+                canvas2D.style.cursor = 'default';
+            }
+            
+            if (state.draggingRoom !== null) {
+                state.draggingRoom = null;
                 state.lastSnapped = false;
                 state.snapType = '';
                 canvas2D.style.cursor = 'default';
