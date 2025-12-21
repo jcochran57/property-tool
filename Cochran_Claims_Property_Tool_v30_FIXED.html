@@ -565,6 +565,7 @@
                     <button onclick="zoomIn()" style="width: 50px; height: 50px; font-size: 24px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">+</button>
                     <button onclick="resetZoom()" style="width: 50px; height: 50px; font-size: 12px; background: #2196F3; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">Reset</button>
                     <button onclick="zoomOut()" style="width: 50px; height: 50px; font-size: 24px; background: #FF5722; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">−</button>
+                    <button id="panModeBtn" onclick="togglePanMode()" style="width: 50px; height: 50px; font-size: 20px; background: #9E9E9E; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">✋</button>
                 </div>
 
                 <div style="position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 100;">
@@ -2987,6 +2988,12 @@ function confirmCutWall() {
             // Hide zoom controls in 3D
             const zoomControls = document.getElementById('zoomControls');
             if (zoomControls) zoomControls.style.display = 'none';
+            // Turn off pan mode when switching to 3D
+            if (panModeActive) {
+                panModeActive = false;
+                const btn = document.getElementById('panModeBtn');
+                if (btn) btn.style.background = '#9E9E9E';
+            }
             
             // CALCULATE CENTER IMMEDIATELY before rendering
             const totalRooms = state.rooms.filter(r => r.floorPoints && r.floorPoints.length >= 3).length;
@@ -3267,7 +3274,7 @@ function confirmCutWall() {
             }
         });
 
-        // Touch panning support for iPad/mobile (two-finger pan)
+        // Touch panning support for iPad/mobile
         let touchStartX = 0;
         let touchStartY = 0;
         let touchStartPanX = 0;
@@ -3277,8 +3284,20 @@ function confirmCutWall() {
         canvas2D.addEventListener('touchstart', (e) => {
             if (state.currentView !== '2d') return;
             
+            // Single-finger pan mode
+            if (e.touches.length === 1 && panModeActive) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                touchStartPanX = state.panX;
+                touchStartPanY = state.panY;
+                isTouchPanning = true;
+                return;
+            }
+            
+            // Two-finger pan (always works)
             if (e.touches.length === 2) {
-                // Two-finger touch - start panning
                 e.preventDefault();
                 
                 const touch1 = e.touches[0];
@@ -3296,15 +3315,25 @@ function confirmCutWall() {
         canvas2D.addEventListener('touchmove', (e) => {
             if (state.currentView !== '2d') return;
             
-            if (e.touches.length === 2 && isTouchPanning) {
+            if (isTouchPanning) {
                 e.preventDefault();
                 
-                const touch1 = e.touches[0];
-                const touch2 = e.touches[1];
+                let currentX, currentY;
                 
-                // Calculate current center
-                const currentX = (touch1.clientX + touch2.clientX) / 2;
-                const currentY = (touch1.clientY + touch2.clientY) / 2;
+                if (e.touches.length === 1 && panModeActive) {
+                    // Single-finger pan
+                    const touch = e.touches[0];
+                    currentX = touch.clientX;
+                    currentY = touch.clientY;
+                } else if (e.touches.length === 2) {
+                    // Two-finger pan
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    currentX = (touch1.clientX + touch2.clientX) / 2;
+                    currentY = (touch1.clientY + touch2.clientY) / 2;
+                } else {
+                    return;
+                }
                 
                 // Calculate movement
                 const dx = currentX - touchStartX;
@@ -3319,7 +3348,7 @@ function confirmCutWall() {
         });
 
         canvas2D.addEventListener('touchend', (e) => {
-            if (e.touches.length < 2) {
+            if (e.touches.length === 0) {
                 isTouchPanning = false;
             }
         });
@@ -3769,6 +3798,21 @@ for (let i = room.doors.length - 1; i >= 0; i--) {
             state.panY = 0;
             document.getElementById('zoomLevel').textContent = '100%';
             redraw2D();
+        }
+
+        // Pan mode for touch devices
+        let panModeActive = false;
+        
+        function togglePanMode() {
+            panModeActive = !panModeActive;
+            const btn = document.getElementById('panModeBtn');
+            if (panModeActive) {
+                btn.style.background = '#FF9800'; // Orange when active
+                showToast('✋ Pan Mode ON - Drag with one finger to move');
+            } else {
+                btn.style.background = '#9E9E9E'; // Gray when inactive
+                showToast('✋ Pan Mode OFF');
+            }
         }
 
         function zoomAll() {
