@@ -11,7 +11,9 @@ document.addEventListener("DOMContentLoaded", () => {
   canvas.style.border = "1px solid #999";
   canvas.width = window.innerWidth - 320;
   canvas.height = window.innerHeight - 120;
-  document.body.appendChild(canvas);
+  const container = document.getElementById("canvasContainer");
+container.appendChild(canvas);
+
 
   const ctx = canvas.getContext("2d");
 
