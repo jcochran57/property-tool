@@ -1,66 +1,68 @@
-const CACHE_NAME = 'cochran-claims-v1';
+// Service Worker for Property Measurement Tool
+const CACHE_NAME = 'property-tool-v1';
 const urlsToCache = [
-  './',
-  './Cochran_Claims_Property_Tool_v30_FIXED.html',
-  './manifest.json'
+  '/property-tool/',
+  '/property-tool/index.html',
+  '/property-tool/manifest.json',
+  '/property-tool/icon-192.png',
+  '/property-tool/icon-512.png'
 ];
 
-// Install service worker and cache resources
-self.addEventListener('install', event => {
+// Install - cache assets
+self.addEventListener('install', (event) => {
+  console.log('Service Worker: Installing...');
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
+      .then((cache) => {
+        console.log('Service Worker: Caching files');
         return cache.addAll(urlsToCache);
       })
+      .then(() => self.skipWaiting())
   );
 });
 
-// Fetch resources - try cache first, then network
-self.addEventListener('fetch', event => {
+// Activate - clean up old caches
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker: Activating...');
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            console.log('Service Worker: Clearing old cache');
+            return caches.delete(cache);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// Fetch - serve from cache, fallback to network
+self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
+      .then((response) => {
         if (response) {
           return response;
         }
         
-        // Clone the request
         const fetchRequest = event.request.clone();
         
-        return fetch(fetchRequest).then(response => {
-          // Check if valid response
+        return fetch(fetchRequest).then((response) => {
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
           
-          // Clone the response
           const responseToCache = response.clone();
           
           caches.open(CACHE_NAME)
-            .then(cache => {
+            .then((cache) => {
               cache.put(event.request, responseToCache);
             });
           
           return response;
         });
       })
-  );
-});
-
-// Activate service worker and clean up old caches
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
   );
 });
